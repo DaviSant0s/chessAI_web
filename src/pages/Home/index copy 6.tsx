@@ -43,28 +43,27 @@ export default function Home() {
       .catch((err) => console.error(err));
   }, []);
 
-   useEffect(() => {
-     const handleResize = () => {
-       const width = window.innerWidth;
-       const height = window.innerHeight;
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
 
-       if (width < 640) {
-         // Mobile
-         setBoardSize(Math.min(width - 32, height * 0.5));
-       } else if (width < 1024) {
-         // Tablet
-         setBoardSize(Math.min(width * 0.6, height * 0.7));
-       } else {
-         // Desktop
-         setBoardSize(Math.min(600, height * 0.75));
-       }
-     };
+      if (width < 640) {
+        // Mobile
+        setBoardSize(Math.min(width - 32, height * 0.5));
+      } else if (width < 1024) {
+        // Tablet
+        setBoardSize(Math.min(width * 0.6, height * 0.7));
+      } else {
+        // Desktop
+        setBoardSize(Math.min(600, height * 0.75));
+      }
+    };
 
-     handleResize();
-     window.addEventListener('resize', handleResize);
+    handleResize();
+    window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-   }, []);
-
+  }, []);
 
   const handleMove = (sourceSquare: string, targetSquare: string): boolean => {
     const move = sourceSquare + targetSquare;
@@ -118,7 +117,7 @@ export default function Home() {
   };
 
   return (
-    <div className=" w-full h-screen overflow-x-hidden  bg-[#302e2b]">
+    <div className=" w-full h-screen overflow-x-hidden overflow-y-hidden bg-[#302e2b]">
       <header className="relative z-20 bg-[#262421] border-b border-[#3d3d3d] shadow-lg">
         <div className="container mx-auto px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
