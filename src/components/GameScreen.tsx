@@ -141,7 +141,7 @@ const GamePanel = () => {
               className="w-full bg-[#c94545] hover:bg-[#b33838] text-white px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
             >
               <RotateCcw className="w-5 h-5" />
-              Sair para o Lobby
+              Sair do jogo
             </button>
           </>
         ) : (
