@@ -24,9 +24,7 @@ interface GameContextType {
   createGame: (playAs: 'white' | 'black') => Promise<string | null>;
   joinGame: (gameId: string) => Promise<void>;
   leaveGame: () => void;
-  // ================== CORREÇÃO 3 (PROMOÇÃO) ==================
-  handleMove: (move: string) => void; // Agora aceita a string de jogada completa
-  // ================== FIM DA CORREÇÃO 3 ==================
+  handleMove: (sourceSquare: string, targetSquare: string) => void;
   handleSuggest: () => Promise<void>;
   clearError: () => void;
 }
@@ -70,13 +68,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Correção 1 (Orientação)
   const createGame = async (playAs: 'white' | 'black') => {
     if (!token) return null;
     try {
       setIsLoading(true);
       const data = await api.createGame(playAs, token);
       setCurrentGameId(data.game_id);
+      setGameState(data);
       return data.game_id;
     } catch (err: any) {
       handleApiError(err);
@@ -91,7 +89,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       const data = await api.joinGame(gameId, token);
-      setCurrentGameId(gameId); 
+      setCurrentGameId(gameId);
       setGameState(data);
     } catch (err: any) {
       handleApiError(err);
@@ -108,54 +106,53 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setSuggestion('');
   };
 
-  // Correção 2 (Polling)
-  const pollGameState = useCallback(async (gameId: string) => {
-    if (!token) return;
+  // --- Polling ---
+  const pollGameState = useCallback(async () => {
+    if (!currentGameId || !token) return;
+
     try {
-      const data = await api.getGameState(gameId, token);
+      const data = await api.getGameState(currentGameId, token);
       setGameState(data);
     } catch (err) {
       console.error('Erro no polling:', err);
+      // Não definimos erro aqui para não incomodar o usuário
     }
-  }, [token]);
+  }, [currentGameId, token]);
 
   useEffect(() => {
-    if (currentGameId) {
-      pollGameState(currentGameId);
-      const interval = setInterval(() => {
-        pollGameState(currentGameId);
-      }, 2000);
+    if (currentGameId && gameState?.status === 'ongoing') {
+      const interval = setInterval(pollGameState, 2000);
       return () => clearInterval(interval);
     }
-  }, [currentGameId, pollGameState]);
+  }, [currentGameId, gameState?.status, pollGameState]);
 
-
-  // ================== CORREÇÃO 3 (PROMOÇÃO) ==================
   // --- Ações no Jogo ---
-  const handleMove = (move: string) => { // 'move' agora é recebido como argumento
+  // Este é um "fire-and-forget" para a UI do tabuleiro responder rápido
+  const handleMove = (sourceSquare: string, targetSquare: string) => {
     if (!currentGameId || !token || gameState?.status !== 'ongoing') {
       return;
     }
-    
-    // A linha 'const move = ...' foi REMOVIDA
+
+    const move = sourceSquare + targetSquare;
     setSuggestion('');
-    setIsLoading(true); 
+    setIsLoading(true); // Feedback de carregamento
     
     api
-      .makeMove(currentGameId, move, token) // 'move' é passado diretamente
+      .makeMove(currentGameId, move, token)
       .then((data: MoveResponse) => {
         setGameState(data);
         setEvaluation(data.evaluation.label);
         setProb(data.evaluation.probability_good);
       })
       .catch((err: any) => {
+        // O erro de jogada inválida será tratado pelo backend
+        // Mas podemos mostrar um erro de "conexão"
         setError(err.message);
       })
       .finally(() => {
         setIsLoading(false);
       });
   };
-  // ================== FIM DA CORREÇÃO 3 ==================
 
   const handleSuggest = async () => {
     if (!currentGameId || !token) return;
@@ -163,8 +160,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       const data = await api.getSuggestion(currentGameId, token);
       setSuggestion(data.suggestion);
-    } catch (err: any)
-      {
+    } catch (err: any) {
       handleApiError(err);
     } finally {
       setIsLoading(false);

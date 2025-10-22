@@ -8,6 +8,7 @@ import { GameScreen } from '../../components/GameScreen';
 import { Header } from '../../components/Header';
 import { CreateGameModal } from '../../components/modals/CreateGameModal';
 import { OpenGamesModal } from '../../components/modals/OpenGamesModal';
+import { GameResultOverlay } from '../../components/GameResultOverlay';
 
 export default function Home() {
   const { token } = useAuth();
@@ -45,6 +46,11 @@ export default function Home() {
       {showCreateModal && (
         <CreateGameModal onClose={() => setShowCreateModal(false)} />
       )}
+
+      {/* Este componente cuida de si mesmo. 
+        Ele só vai aparecer se 'gameState.result' existir.
+      */}
+      <GameResultOverlay />
 
       {/* Notificação de erro global (do GameProvider) */}
       {error && (
