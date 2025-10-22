@@ -207,13 +207,10 @@ export default function ChessApp() {
         console.error('Erro no polling:', err);
       }
     },
-    [token] // Removido apiCall, pois é definida no escopo do componente
+    [token]
   );
 
   const startPolling = (gameId: string) => {
-    // Busca imediata ao iniciar
-    pollGameState(gameId);
-    
     const interval = setInterval(() => {
       pollGameState(gameId);
     }, 2000); // Poll a cada 2 segundos
@@ -412,22 +409,6 @@ export default function ChessApp() {
     );
   }
 
-  // =================================================================
-  // =================== LÓGICA DE ORIENTAÇÃO ======================
-  // =================================================================
-  // Determina a cor do jogador logado
-  let boardOrientation: 'white' | 'black' = 'white'; // Padrão
-  if (user && gameState) {
-    if (user.username === gameState.player_black) {
-      boardOrientation = 'black';
-    }
-    // Se user.username === gameState.player_white, já é 'white' (padrão)
-    // Se não for nenhum (espectador), também fica 'white' (padrão)
-  }
-  // =================================================================
-  // =================================================================
-
-
   return (
     <div className="w-full h-screen overflow-x-hidden bg-[#302e2b]">
       {/* HEADER */}
@@ -602,28 +583,10 @@ export default function ChessApp() {
             </div>
           </div>
         ) : (
-          // =================== ALTERAÇÃO AQUI ===================
-          // Usamos uma IIFE para declarar variáveis dentro da expressão ternária
-          (() => {
-            // Bloco de info do jogador BRANCO
-            const whitePlayerInfo = (
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-[#403e3c] border border-[#4b4a4a] rounded-sm flex items-center justify-center">
-                  {gameState?.turn === 'white' ? (
-                    <Crown className="w-6 h-6 text-[#f0d078]" />
-                  ) : (
-                    <Bot className="w-6 h-6 text-[#f0f0f0]" />
-                  )}
-                </div>
-                <span className="text-[#f0f0f0] font-semibold">
-                  {gameState?.player_white || 'Aguardando...'}
-                </span>
-              </div>
-            );
-
-            // Bloco de info do jogador PRETO
-            const blackPlayerInfo = (
-              <div className="flex items-center gap-2">
+          <div className="flex flex-col lg:flex-row items-start justify-center gap-6 lg:gap-8 max-w-7xl mx-auto">
+            {/* TABULEIRO */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
                 <div className="w-10 h-10 bg-[#403e3c] border border-[#4b4a4a] rounded-sm flex items-center justify-center">
                   {gameState?.turn === 'black' ? (
                     <Crown className="w-6 h-6 text-[#f0d078]" />
@@ -635,139 +598,122 @@ export default function ChessApp() {
                   {gameState?.player_black || 'Aguardando...'}
                 </span>
               </div>
-            );
 
-            // Agora retornamos o layout
-            return (
-              <div className="flex flex-col lg:flex-row items-start justify-center gap-6 lg:gap-8 max-w-7xl mx-auto">
-                {/* TABULEIRO */}
-                <div>
-                  {/* JOGADOR DO TOPO */}
-                  <div className="mb-2">
-                    {/* Se orientação for 'white', topo é preto. Se for 'black', topo é branco. */}
-                    {boardOrientation === 'white'
-                      ? blackPlayerInfo
-                      : whitePlayerInfo}
-                  </div>
+              <div className="rounded-lg overflow-hidden shadow-2xl border-4 border-[#3d3d3d]">
+                <Chessboard
+                  position={gameState?.fen || 'start'}
+                  onPieceDrop={handleMove}
+                  boardWidth={boardSize}
+                  arePiecesDraggable={
+                    !isLoading && gameState?.status === 'ongoing'
+                  }
+                  customDarkSquareStyle={{ backgroundColor: '#769656' }}
+                  customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
+                />
+              </div>
 
-                  <div className="rounded-lg overflow-hidden shadow-2xl border-4 border-[#3d3d3d]">
-                    <Chessboard
-                      position={gameState?.fen || 'start'}
-                      onPieceDrop={handleMove}
-                      boardWidth={boardSize}
-                      arePiecesDraggable={
-                        !isLoading && gameState?.status === 'ongoing'
-                      }
-                      customDarkSquareStyle={{ backgroundColor: '#769656' }}
-                      customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
-                      boardOrientation={boardOrientation}
-                    />
-                  </div>
-
-                  {/* JOGADOR DE BAIXO */}
-                  <div className="mt-2">
-                    {/* Se orientação for 'white', baixo é branco. Se for 'black', baixo é preto. */}
-                    {boardOrientation === 'white'
-                      ? whitePlayerInfo
-                      : blackPlayerInfo}
-                  </div>
+              <div className="flex items-center gap-2 mt-2">
+                <div className="w-10 h-10 bg-[#403e3c] border border-[#4b4a4a] rounded-sm flex items-center justify-center">
+                  {gameState?.turn === 'white' ? (
+                    <Crown className="w-6 h-6 text-[#f0d078]" />
+                  ) : (
+                    <Bot className="w-6 h-6 text-[#f0f0f0]" />
+                  )}
                 </div>
+                <span className="text-[#f0f0f0] font-semibold">
+                  {gameState?.player_white || 'Aguardando...'}
+                </span>
+              </div>
+            </div>
 
-                {/* PAINEL LATERAL */}
-                <div className="w-full lg:w-96 space-y-4 mt-12">
-                  {/* Status do jogo */}
-                  <div className="bg-[#262421] rounded-xl p-6 border border-[#3d3d3d]">
-                    <div className="flex items-center gap-3">
-                      <Crown className="w-6 h-6 text-[#f0d078]" />
-                      <div>
-                        <p className="text-xs text-[#b3b3b3] uppercase">
-                          Status
-                        </p>
-                        <p className="text-xl font-bold text-[#f0f0f0]">
-                          {gameState?.status === 'ongoing'
-                            ? `Turno: ${
-                                gameState.turn === 'white'
-                                  ? 'Brancas'
-                                  : 'Pretas'
-                              }`
-                            : gameState?.status === 'waiting'
-                            ? 'Aguardando jogador'
-                            : gameState?.result || 'Finalizado'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Avaliação */}
-                  {evaluation && (
-                    <div className="bg-[#262421] rounded-xl p-6 border border-[#81b64c]">
-                      <div className="flex items-start gap-3">
-                        <Activity className="w-6 h-6 text-[#81b64c] mt-1" />
-                        <div className="flex-1">
-                          <p className="text-xs text-[#b3b3b3] uppercase mb-2">
-                            Avaliação
-                          </p>
-                          <p className="text-2xl font-bold text-[#f0f0f0] mb-1">
-                            {evaluation}
-                          </p>
-                          <div className="w-full bg-[#1a1917] rounded-full h-2">
-                            <div
-                              className="h-full bg-[#81b64c] rounded-full transition-all duration-500"
-                              style={{ width: `${prob * 100}%` }}
-                            />
-                          </div>
-                          <p className="text-sm text-[#b3b3b3] mt-2">
-                            Confiança:{' '}
-                            <span className="font-semibold text-[#81b64c]">
-                              {(prob * 100).toFixed(1)}%
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Sugestão */}
-                  {suggestion && (
-                    <div className="bg-[#262421] rounded-xl p-6 border border-[#769656]">
-                      <div className="flex items-start gap-3">
-                        <Lightbulb className="w-6 h-6 text-[#f0d078] mt-1" />
-                        <div className="flex-1">
-                          <p className="text-xs text-[#b3b3b3] uppercase mb-2">
-                            Sugestão
-                          </p>
-                          <p className="text-xl font-bold text-[#f0f0f0]">
-                            {suggestion}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Botões */}
-                  <div className="space-y-3">
-                    <button
-                      onClick={handleSuggest}
-                      disabled={isLoading || gameState?.status !== 'ongoing'}
-                      className="w-full bg-[#81b64c] hover:bg-[#70a03f] text-white px-6 py-4 rounded-xl font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <Lightbulb className="w-5 h-5" />
-                      Sugestão
-                    </button>
-
-                    <button
-                      onClick={leaveGame}
-                      className="w-full bg-[#c94545] hover:bg-[#b33838] text-white px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-                    >
-                      <RotateCcw className="w-5 h-5" />
-                      Sair do Jogo
-                    </button>
+            {/* PAINEL LATERAL */}
+            <div className="w-full lg:w-96 space-y-4 mt-12">
+              {/* Status do jogo */}
+              <div className="bg-[#262421] rounded-xl p-6 border border-[#3d3d3d]">
+                <div className="flex items-center gap-3">
+                  <Crown className="w-6 h-6 text-[#f0d078]" />
+                  <div>
+                    <p className="text-xs text-[#b3b3b3] uppercase">Status</p>
+                    <p className="text-xl font-bold text-[#f0f0f0]">
+                      {gameState?.status === 'ongoing'
+                        ? `Turno: ${
+                            gameState.turn === 'white' ? 'Brancas' : 'Pretas'
+                          }`
+                        : gameState?.status === 'waiting'
+                        ? 'Aguardando jogador'
+                        : gameState?.result || 'Finalizado'}
+                    </p>
                   </div>
                 </div>
               </div>
-            );
-          })() // Fim da IIFE
-          // =================== FIM DA ALTERAÇÃO ===================
+
+              {/* Avaliação */}
+              {evaluation && (
+                <div className="bg-[#262421] rounded-xl p-6 border border-[#81b64c]">
+                  <div className="flex items-start gap-3">
+                    <Activity className="w-6 h-6 text-[#81b64c] mt-1" />
+                    <div className="flex-1">
+                      <p className="text-xs text-[#b3b3b3] uppercase mb-2">
+                        Avaliação
+                      </p>
+                      <p className="text-2xl font-bold text-[#f0f0f0] mb-1">
+                        {evaluation}
+                      </p>
+                      <div className="w-full bg-[#1a1917] rounded-full h-2">
+                        <div
+                          className="h-full bg-[#81b64c] rounded-full transition-all duration-500"
+                          style={{ width: `${prob * 100}%` }}
+                        />
+                      </div>
+                      <p className="text-sm text-[#b3b3b3] mt-2">
+                        Confiança:{' '}
+                        <span className="font-semibold text-[#81b64c]">
+                          {(prob * 100).toFixed(1)}%
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sugestão */}
+              {suggestion && (
+                <div className="bg-[#262421] rounded-xl p-6 border border-[#769656]">
+                  <div className="flex items-start gap-3">
+                    <Lightbulb className="w-6 h-6 text-[#f0d078] mt-1" />
+                    <div className="flex-1">
+                      <p className="text-xs text-[#b3b3b3] uppercase mb-2">
+                        Sugestão
+                      </p>
+                      <p className="text-xl font-bold text-[#f0f0f0]">
+                        {suggestion}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Botões */}
+              <div className="space-y-3">
+                <button
+                  onClick={handleSuggest}
+                  disabled={isLoading || gameState?.status !== 'ongoing'}
+                  className="w-full bg-[#81b64c] hover:bg-[#70a03f] text-white px-6 py-4 rounded-xl font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <Lightbulb className="w-5 h-5" />
+                  Sugestão
+                </button>
+
+                <button
+                  onClick={leaveGame}
+                  className="w-full bg-[#c94545] hover:bg-[#b33838] text-white px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                  Sair do Jogo
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
