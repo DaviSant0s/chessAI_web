@@ -5,7 +5,10 @@ import {
   useContext,
   type ReactNode,
   useCallback,
+  useRef
 } from 'react';
+// 1. IMPORTE O 'io' E O TIPO 'Socket'
+import { io, type Socket } from 'socket.io-client';
 import type { GameState, OpenGame, MoveResponse } from '../types';
 import * as api from '../services/api';
 import { useAuth } from './AuthProvider'; // Precisamos do token
@@ -30,6 +33,9 @@ interface GameContextType {
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
+// 2. DEFINA A URL DO SEU BACKEND
+const SOCKET_URL = 'http://localhost:5000';
+
 export const GameProvider = ({ children }: { children: ReactNode }) => {
   const { token, logout } = useAuth();
   const [currentGameId, setCurrentGameId] = useState<string | null>(null);
@@ -42,6 +48,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [suggestion, setSuggestion] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 3. ARMAZENE O SOCKET EM UM 'useRef' PARA EVITAR RECONEXÕES
+  // Usamos useRef para que o objeto do socket persista
+  // durante o ciclo de vida do componente sem causar re-renderizações.
+  const socketRef = useRef<Socket | null>(null);
 
   const clearError = () => setError(null);
 
@@ -98,6 +109,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const leaveGame = () => {
+    // 4. (OPCIONAL) EMITA UM EVENTO DE 'leave_game'
+    if (socketRef.current && currentGameId) {
+      socketRef.current.emit('leave_game', { game_id: currentGameId });
+    }
+
     setCurrentGameId(null);
     setGameState(null);
     setEvaluation('');
@@ -105,29 +121,98 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setSuggestion('');
   };
 
-  const pollGameState = useCallback(async (gameId: string) => {
+  // 5. MANTENHA A FUNÇÃO DE POLLING, VAMOS USÁ-LA UMA VEZ
+  const fetchGameState = useCallback(async (gameId: string) => {
     if (!token) return;
     try {
       const data = await api.getGameState(gameId, token);
       setGameState(data);
     } catch (err) {
-      console.error('Erro no polling:', err);
+      console.error('Erro ao buscar estado inicial:', err);
     }
   }, [token]);
 
+  // 6. NOVO useEffect PARA GERENCIAR A CONEXÃO DO SOCKET
   useEffect(() => {
-    if (currentGameId) {
-      pollGameState(currentGameId);
-      const interval = setInterval(() => {
-        pollGameState(currentGameId);
-      }, 2000);
-      return () => clearInterval(interval);
+    // Só conecta se tivermos um token e não houver socket
+    if (token && !socketRef.current) {
+      // Conecta ao servidor de socket
+      // (Você pode passar o token aqui para autenticação
+      // se proteger os handlers de socket, mas por agora é simples)
+      const newSocket = io(SOCKET_URL, {
+        // Exemplo de como enviar o token (se necessário no futuro)
+        // auth: { token }
+      });
+      
+      socketRef.current = newSocket;
+
+      newSocket.on('connect', () => {
+        console.log('Socket.IO conectado:', newSocket.id);
+      });
+
+      newSocket.on('disconnect', () => {
+        console.log('Socket.IO desconectado');
+      });
+
+      // Cleanup: Desconecta quando o provider é desmontado (ex: logout)
+      return () => {
+        newSocket.disconnect();
+        socketRef.current = null;
+      };
+    } else if (!token && socketRef.current) {
+      // Se o usuário deslogar, desconecta o socket
+      socketRef.current.disconnect();
+      socketRef.current = null;
     }
-  }, [currentGameId, pollGameState]);
+  }, [token]);
+
+  // 7. SUBSTITUA O useEffect DO POLLING POR ESTE
+  // Este é o coração da mudança.
+  useEffect(() => {
+    const socket = socketRef.current;
+
+    // Se não tivermos socket ou gameId, não faz nada
+    if (!socket || !currentGameId) {
+      return;
+    }
+
+    // 1. Define o listener para ATUALIZAÇÕES
+    const handleGameUpdate = (data: GameState) => {
+      console.log('Socket: Recebido game_update');
+      setGameState(data);
+      
+      // Se a jogada tiver avaliação (veio do /move), atualiza
+      if ((data as MoveResponse).evaluation) {
+        const moveData = data as MoveResponse;
+        setEvaluation(moveData.evaluation.label);
+        setProb(moveData.evaluation.probability_good);
+      }
+    };
+    
+    socket.on('game_update', handleGameUpdate);
+
+    // 2. Entra na sala do jogo
+    socket.emit('join_game', { game_id: currentGameId });
+    
+    // 3. Busca o estado ATUAL do jogo (apenas uma vez)
+    // Isso garante que o estado está sincronizado
+    // no momento em que entramos.
+    fetchGameState(currentGameId);
+
+    // 4. Função de Cleanup
+    return () => {
+      console.log('Socket: Limpando listeners e saindo da sala');
+      socket.off('game_update', handleGameUpdate);
+      // (Opcional) socket.emit('leave_game', { game_id: currentGameId });
+    };
+    
+  }, [currentGameId, fetchGameState]); // Depende de currentGameId e fetchGameState
 
 
   // --- Ações no Jogo ---
-  const handleMove = (move: string) => { // 'move' agora é recebido como argumento
+  // 8. O 'handleMove' FICA (QUASE) IDÊNTICO!
+  // Ele ainda é o "trigger" que inicia a atualização.
+  const handleMove = (move: string) => { 
     if (!currentGameId || !token || gameState?.status !== 'ongoing') {
       return;
     }
@@ -136,8 +221,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true); 
     
     api
-      .makeMove(currentGameId, move, token) // 'move' é passado diretamente
+      .makeMove(currentGameId, move, token)
       .then((data: MoveResponse) => {
+        // O JOGADOR QUE FEZ A JOGADA ATUALIZA O ESTADO IMEDIATAMENTE
+        // PELA RESPOSTA HTTP.
+        // OS OUTROS JOGADORES VÃO ATUALIZAR PELO EVENTO 'game_update'
         setGameState(data);
         setEvaluation(data.evaluation.label);
         setProb(data.evaluation.probability_good);
