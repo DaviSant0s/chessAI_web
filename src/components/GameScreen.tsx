@@ -37,32 +37,38 @@ const PlayerInfo = ({
   </div>
 );
 
-// ================== GAMEPANEL CORRIGIDO ==================
+// ================== GAMEPANEL ==================
 // Painel lateral de informações
 const GamePanel = () => {
+  const { user } = useAuth(); // <-- Obter o usuário logado
+
   const {
     gameState,
     evaluation,
-    prob, // Agora 'prob' será usado
+    prob,
     suggestion,
     isLoading,
     handleSuggest,
     leaveGame,
+    // --- INÍCIO DA ADIÇÃO ---
+    handleRequestRematch,
+    handleAcceptRematch,
+    // --- FIM DA ADIÇÃO ---
   } = useGame();
 
   // Verifica se o jogo terminou
   const isGameOver = gameState?.status !== 'ongoing' && gameState?.status !== 'waiting';
 
-  // Função placeholder para revanche
-  const handleRematch = () => {
-    console.log("Pedido de revanche enviado (simulação front-end)");
-    alert("Função de revanche ainda não implementada no back-end.");
-  };
+  // --- INÍCIO DA LÓGICA DE REVANCHE ---
+  const rematchRequester = gameState?.rematch_requested_by;
+  const iAmTheRequester = user?.username === rematchRequester;
+  const opponentRequested = rematchRequester && !iAmTheRequester;
+  // --- FIM DA LÓGICA DE REVANCHE ---
 
   return (
     <div className="w-full lg:w-96 space-y-4 mt-12">
       
-      {/* Status do jogo (sem alterações) */}
+      {/* Status do jogo */}
       <div className="bg-[#262421] rounded-xl p-6 border border-[#3d3d3d]">
         <div className="flex items-center gap-3">
           <Crown className="w-6 h-6 text-[#f0d078]" />
@@ -81,8 +87,7 @@ const GamePanel = () => {
         </div>
       </div>
 
-      {/* ================== BLOCO DE AVALIAÇÃO RESTAURADO ================== */}
-      {/* Avaliação (Restaurado para usar 'prob') */}
+      {/* Avaliação */}
       {evaluation && (
         <div className="bg-[#262421] rounded-xl p-6 border border-[#81b64c]">
           <div className="flex items-start gap-3">
@@ -109,8 +114,7 @@ const GamePanel = () => {
         </div>
       )}
 
-      {/* ================== BLOCO DE SUGESTÃO RESTAURADO ================== */}
-      {/* Sugestão (Restaurado) */}
+      {/* Sugestão */}
       {suggestion && (
         <div className="bg-[#262421] rounded-xl p-6 border border-[#769656]">
           <div className="flex items-start gap-3">
@@ -123,19 +127,45 @@ const GamePanel = () => {
         </div>
       )}
 
-      {/* Botões (Com lógica condicional) */}
+      {/* Botões (Com lógica condicional ATUALIZADA) */}
       <div className="space-y-3">
         
         {isGameOver ? (
           // === SE O JOGO ACABOU ===
           <>
-            <button
-              onClick={handleRematch}
-              className="w-full bg-[#81b64c] hover:bg-[#70a03f] text-white px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-            >
-              <RefreshCw className="w-5 h-5" />
-              Pedir Revanche
-            </button>
+            {/* Lógica de botões de Revanche */}
+            {!rematchRequester && (
+              <button
+                onClick={handleRequestRematch}
+                disabled={isLoading}
+                className="w-full bg-[#81b64c] hover:bg-[#70a03f] text-white px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-5 h-5" />
+                Pedir Revanche
+              </button>
+            )}
+
+            {iAmTheRequester && (
+              <button
+                disabled={true}
+                className="w-full bg-[#403e3c] text-[#b3b3b3] px-6 py-4 rounded-xl font-semibold flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-5 h-5 animate-spin" />
+                Aguardando Oponente...
+              </button>
+            )}
+
+            {opponentRequested && (
+              <button
+                onClick={handleAcceptRematch}
+                disabled={isLoading}
+                className="w-full bg-[#81b64c] hover:bg-[#70a03f] text-white px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-5 h-5" />
+                Aceitar Revanche
+              </button>
+            )}
+
             <button
               onClick={leaveGame}
               className="w-full bg-[#c94545] hover:bg-[#b33838] text-white px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
@@ -171,7 +201,7 @@ const GamePanel = () => {
 // ================== FIM DAS ATUALIZAÇÕES ==================
 
 
-// Componente principal da tela de jogo (sem alterações)
+// Componente principal da tela de jogo
 export const GameScreen = () => {
   const { user } = useAuth();
   const { gameState, handleMove, isLoading } = useGame();
@@ -186,7 +216,7 @@ export const GameScreen = () => {
     return 'white';
   }, [user, gameState]);
 
-  // Lógica de promoção (sem alterações)
+  // Lógica de promoção 
   const onPieceDrop = (
     sourceSquare: string,
     targetSquare: string,
@@ -222,7 +252,7 @@ export const GameScreen = () => {
   return (
     <div className="container mx-auto px-4 py-6 lg:py-10">
       <div className="flex flex-col lg:flex-row items-start justify-center gap-6 lg:gap-8 max-w-7xl mx-auto">
-        {/* TABULEIRO (sem alterações) */}
+        {/* TABULEIRO*/}
         <div>
           {/* Jogador do Topo */}
           <div className="mb-2">
@@ -248,8 +278,6 @@ export const GameScreen = () => {
             {boardOrientation === 'white' ? whitePlayerInfo : blackPlayerInfo}
           </div>
         </div>
-
-        {/* PAINEL LATERAL (agora atualizado) */}
         <GamePanel />
       </div>
     </div>

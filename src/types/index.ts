@@ -15,6 +15,8 @@ export interface GameState {
   player_white: string | null;
   player_black: string | null;
   last_move_at: string;
+  // --- ADICIONADO ---
+  rematch_requested_by: string | null;
 }
 
 export interface OpenGame {

@@ -106,3 +106,31 @@ export const getSuggestion = (
     },
     token
   );
+
+  // Edicao comeca aqui
+  export const requestRematch = (
+  gameId: string,
+  token: string
+): Promise<GameState> =>
+  apiCall(
+    '/request_rematch',
+    {
+      method: 'POST',
+      body: JSON.stringify({ game_id: gameId }),
+    },
+    token
+  );
+
+export const acceptRematch = (
+  gameId: string,
+  token: string
+): Promise<GameState> =>
+  apiCall(
+    '/accept_rematch',
+    {
+      method: 'POST',
+      body: JSON.stringify({ game_id: gameId }),
+    },
+    token
+  );
+// edicao termina aqui

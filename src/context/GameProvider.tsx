@@ -29,6 +29,11 @@ interface GameContextType {
   handleMove: (move: string) => void; // Agora aceita a string de jogada completa
   handleSuggest: () => Promise<void>;
   clearError: () => void;
+
+  // --- INÍCIO DA ADIÇÃO ---
+  handleRequestRematch: () => void;
+  handleAcceptRematch: () => void;
+  // --- FIM DA ADIÇÃO ---
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -252,6 +257,37 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // --- INÍCIO DAS NOVAS FUNÇÕES ---
+  const handleRequestRematch = () => {
+    if (!currentGameId || !token) return;
+    
+    setIsLoading(true);
+    api.requestRematch(currentGameId, token)
+       // Atualiza o estado local imediatamente pela resposta HTTP
+       // O oponente receberá a mesma atualização via Socket.IO
+      .then(data => setGameState(data)) 
+      .catch(handleApiError)
+      .finally(() => setIsLoading(false));
+  };
+  
+  const handleAcceptRematch = () => {
+    if (!currentGameId || !token) return;
+
+    setIsLoading(true);
+    api.acceptRematch(currentGameId, token)
+      // O Socket.IO notificará a todos que o jogo "resetou"
+      .then(data => {
+        setGameState(data);
+        // Limpa os estados de avaliação/sugestão do jogo anterior
+        setEvaluation('');
+        setProb(0);
+        setSuggestion('');
+      }) 
+      .catch(handleApiError)
+      .finally(() => setIsLoading(false));
+  };
+  // --- FIM DAS NOVAS FUNÇÕES ---
+
   const value = {
     currentGameId,
     gameState,
@@ -268,6 +304,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     handleMove,
     handleSuggest,
     clearError,
+
+    // --- INÍCIO DA ADIÇÃO ---
+    handleRequestRematch,
+    handleAcceptRematch,
+    // --- FIM DA ADIÇÃO ---
   };
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
