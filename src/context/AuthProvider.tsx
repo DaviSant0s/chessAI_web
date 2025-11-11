@@ -67,7 +67,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
       setIsLoading(true);
       await api.registerUser(formData);
-      // Opcional: fazer login automaticamente ou redirecionar
     } catch (err: any) {
       setError(err.message);
       throw err; // Propaga o erro

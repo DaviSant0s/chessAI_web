@@ -1,4 +1,3 @@
-// src/context/GameProvider.tsx
 import {
   createContext,
   useState,
@@ -24,9 +23,7 @@ interface GameContextType {
   createGame: (playAs: 'white' | 'black') => Promise<string | null>;
   joinGame: (gameId: string) => Promise<void>;
   leaveGame: () => void;
-  // ================== CORREÇÃO 3 (PROMOÇÃO) ==================
   handleMove: (move: string) => void; // Agora aceita a string de jogada completa
-  // ================== FIM DA CORREÇÃO 3 ==================
   handleSuggest: () => Promise<void>;
   clearError: () => void;
 }
@@ -108,7 +105,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setSuggestion('');
   };
 
-  // Correção 2 (Polling)
   const pollGameState = useCallback(async (gameId: string) => {
     if (!token) return;
     try {
@@ -130,14 +126,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   }, [currentGameId, pollGameState]);
 
 
-  // ================== CORREÇÃO 3 (PROMOÇÃO) ==================
   // --- Ações no Jogo ---
   const handleMove = (move: string) => { // 'move' agora é recebido como argumento
     if (!currentGameId || !token || gameState?.status !== 'ongoing') {
       return;
     }
     
-    // A linha 'const move = ...' foi REMOVIDA
     setSuggestion('');
     setIsLoading(true); 
     
@@ -155,7 +149,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(false);
       });
   };
-  // ================== FIM DA CORREÇÃO 3 ==================
 
   const handleSuggest = async () => {
     if (!currentGameId || !token) return;
