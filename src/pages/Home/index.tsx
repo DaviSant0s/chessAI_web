@@ -18,7 +18,7 @@ export default function Home() {
   const [showGamesModal, setShowGamesModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Se não estiver logado, mostre a tela de Auth
+  // Se não estiver logado, mostre a tela de Authh
   if (!token) {
     return <AuthScreen />;
   }
