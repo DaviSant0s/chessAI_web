@@ -39,7 +39,7 @@ interface GameContextType {
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 // 2. DEFINA A URL DO SEU BACKEND
-const SOCKET_URL = 'http://localhost:5000';
+const SOCKET_URL = 'https://chess-api3.onrender.com';
 
 export const GameProvider = ({ children }: { children: ReactNode }) => {
   const { token, logout } = useAuth();
@@ -89,6 +89,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       const data = await api.createGame(playAs, token);
+
+      // 🌟 ADICIONE ESTA LINHA: Salva o estado do jogo (GameState)
+      setGameState(data);
+
       setCurrentGameId(data.game_id);
       return data.game_id;
     } catch (err: any) {
@@ -145,6 +149,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       // (Você pode passar o token aqui para autenticação
       // se proteger os handlers de socket, mas por agora é simples)
       const newSocket = io(SOCKET_URL, {
+        transports: ['websocket'],
+        path: '/socket.io/',
         // Exemplo de como enviar o token (se necessário no futuro)
         // auth: { token }
       });

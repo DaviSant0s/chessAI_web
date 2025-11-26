@@ -1,7 +1,8 @@
 // src/services/api.ts
 import type { User, GameState, OpenGame, MoveResponse } from '../types';
 
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = 'https://chess-api3.onrender.com';
+// const BASE_URL = 'http://127.0.0.1:5000';
 
 // Função de base para chamadas de API
 const apiCall = async (
